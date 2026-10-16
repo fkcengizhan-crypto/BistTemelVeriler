@@ -2,8 +2,10 @@
 """
 BIST Veri Çekici — Tek Dosya
 =============================
-TradingView canlı verisiyle BIST hisse verilerini çeker ve GÜNLÜK ARŞİV
-Excel dosyası üretir:  Archive/Hisse_Verileri_YYYYMMDD.xlsx
+TradingView canlı verisiyle BIST hisse verilerini çeker ve iki Excel
+dosyası üretir:
+    Archive/Hisse_Verileri_YYYYMMDD.xlsx   (günlük arşiv)
+    Archive/hissetemelveriler.xlsx         (sabit ad, aynı içerik)
 (Aynı gün tekrar çalıştırılırsa yeni dosya oluşturulmaz, üzerine yazılır.)
 Puanlama/skorlama YOKTUR; yalnızca ham + normalize edilmiş veri listelenir.
 
@@ -692,11 +694,13 @@ def _filter_desc(args) -> str:
     return ", ".join(parts) if parts else "(varsayılan — tüm hisseler)"
 
 
-def build_report(df: pd.DataFrame, args, source: str, out_dir: Path) -> Path:
+def build_report(df: pd.DataFrame, args, source: str, out_dir: Path) -> list[Path]:
     now = datetime.now()
     stamp = now.strftime("%Y%m%d")
     out_path = out_dir / f"Hisse_Verileri_{stamp}.xlsx"
     # Aynı gün tekrar çalıştırılırsa yeni dosya üretilmez; mevcut dosyanın üzerine yazılır.
+    # İkinci çıktı: aynı içeriğin sabit adlı kopyası (her çalıştırmada üzerine yazılır).
+    second_path = out_dir / "hissetemelveriler.xlsx"
 
     wb = openpyxl.Workbook()
 
@@ -784,7 +788,8 @@ def build_report(df: pd.DataFrame, args, source: str, out_dir: Path) -> Path:
     wb.worksheets[0].sheet_view.tabSelected = True
 
     wb.save(out_path)
-    return out_path
+    wb.save(second_path)
+    return [out_path, second_path]
 
 
 def sector_summary(df: pd.DataFrame) -> pd.DataFrame:
@@ -965,9 +970,10 @@ def main(argv=None) -> int:
     out_dir = Path(args.cikti)
     out_dir.mkdir(parents=True, exist_ok=True)
     log(f"Excel raporu yazılıyor (arşiv: {out_dir})...")
-    out_path = build_report(filtered if not filtered.empty else df, args, source, out_dir)
-    size = out_path.stat().st_size / 1024
-    log(f"Rapor hazır: {out_path.resolve()} ({size:.0f} KB)")
+    out_paths = build_report(filtered if not filtered.empty else df, args, source, out_dir)
+    for p in out_paths:
+        size = p.stat().st_size / 1024
+        log(f"Rapor hazır: {p.resolve()} ({size:.0f} KB)")
     log(f"süre: {time.time() - started:.1f} sn")
     print("\nBitti. Yatırım tavsiyesi değildir.")
     return 0
