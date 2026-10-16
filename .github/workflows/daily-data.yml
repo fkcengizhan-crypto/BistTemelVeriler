@@ -1,10 +1,8 @@
 name: Günlük BIST Veri Arşivi
 
 on:
-  schedule:
-    # Her iş günü 18:30 TRT (UTC+3) => 15:30 UTC, Pazartesi-Cuma
-    - cron: "30 15 * * 1-5"
-  # Elle de çalıştırabilmek için (Actions sekmesi -> Run workflow)
+  # Tetikleme YALNIZCA Google Apps Script üzerinden yapılır (workflow_dispatch).
+  # Actions sekmesinden elle de çalıştırılabilir.
   workflow_dispatch: {}
 
 permissions:

@@ -56,41 +56,58 @@ python vericekme.py --cikti C:\Raporlar    # farklı çıktı klasörü
 
 ## Otomatik çalışma (GitHub Actions)
 
-Workflow her **iş günü 18:30 TRT** (BIST kapanışı sonrası) çalışır,
-`Archive/` klasörüne yeni Excel ekler ve değişikliği otomatik olarak repoya commit'ler.
+Workflow, **Google Apps Script'ten** günde bir kez tetiklenir (aşağıya bakın).
+Çalışınca `Archive/` klasörüne yeni Excel ekler ve değişikliği otomatik olarak
+repoya commit'ler. Workflow'un kendi zamanlayıcısı (cron) **yoktur**; tetikleme
+yalnızca Apps Script üzerindendir.
 
 ### Kurulum adımları
 
 ```bash
-git init
-git add .
-git commit -m "Günlük BIST veri arşivi projesi"
-git branch -M main
-git remote add origin https://github.com/KULLANICI/REPO.git
-git push -u origin main
+git remote add origin https://github.com/fkcengizhan-crypto/BistTemelVeriler.git
+git push -u origin master      # yerel branch adına göre: master veya main
 ```
 
 Ardından GitHub'da:
 
-1. Depo sayfasında **Settings → Actions → General** bölümüne gidin.
+1. **Settings → Actions → General** bölümüne gidin.
 2. **Workflow permissions** kısmında **"Read and write permissions"** seçin ve kaydedin.
    (Workflow, arşivi repoya commit edebilmek için yazma iznine ihtiyaç duyar.)
 3. **Actions** sekmesinden workflow'u **Run workflow** ile elle test edebilirsiniz.
 
-> Not: Zamanlanmış (`schedule`) workflow'lar yalnızca deponun **varsayılan branch**'inde
-> (genelde `main`) çalışır. Workflow tetiklenmezse Actions'ın etkin olduğundan
-> ve dosyanın varsayılan branch'te olduğundan emin olun.
-
 ### Zamanlamayı değiştirme
 
-`.github/workflows/daily-data.yml` içindeki `cron` satırını düzenleyin.
-Zaman **UTC** olarak verilir; TRT = UTC+3.
+Zamanlama Apps Script tarafındadır. `google_apps_script.gs` içindeki
+`RUN_HOUR` / `RUN_MINUTE` değerlerini değiştirip `createDailyTrigger()`
+fonksiyonunu yeniden çalıştırın.
 
-| İstenen saat | cron ifadesi |
-|---|---|
-| Her iş günü 18:30 TRT | `30 15 * * 1-5` |
-| Her iş günü 21:00 TRT | `0 18 * * 1-5` |
-| Her gün (hafta sonu dahil) | `30 15 * * *` |
+---
+
+## Google Apps Script ile tetikleme (tek yöntem)
+
+Tetikleme **yalnızca** Google Apps Script üzerinden yapılır. Apps Script veriyi
+çekmez; sadece GitHub Actions workflow'unu (`workflow_dispatch`) başlatır.
+
+Dosya: [`google_apps_script.gs`](google_apps_script.gs)
+
+1. **GitHub token:** Settings → Developer settings → Personal access tokens →
+   **Fine-grained tokens** → yeni token
+   - Repository access: Only select repositories → **BistTemelVeriler**
+   - Permissions → **Actions: Read and write**
+2. `google_apps_script.gs` içindeki **`GITHUB_TOKEN`** alanına token'ı yaz:
+
+   ```javascript
+   const GITHUB_TOKEN = 'BURAYA_TOKEN_YAZ';   // <-- buraya yapıştır
+   ```
+
+3. [script.google.com](https://script.google.com) → Yeni proje →
+   kodu `Code.gs` içine yapıştır
+4. `triggerWorkflow()` → bir kez çalıştır (GitHub'da Actions sekmesinde yeni run görünmeli)
+5. `createDailyTrigger()` → bir kez çalıştır (her gün 18:30 TRT)
+6. `checkLastRun()` → son çalışmaların durumunu gösterir
+
+> Güvenlik: Token kod içinde durduğu için Apps Script projesini başkalarıyla
+> paylaşmayın. Token'ın süresi dolduğunda `GITHUB_TOKEN` alanını güncelleyin.
 
 ---
 
