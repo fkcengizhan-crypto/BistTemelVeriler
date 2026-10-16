@@ -2,17 +2,20 @@
 """
 BIST Veri Çekici — Tek Dosya
 =============================
-TradingView canlı verisiyle BIST hisse verilerini çeker,
-Hisse_Verileri_YYYYMMDD.xlsx olarak Excel raporu yazar.
+TradingView canlı verisiyle BIST hisse verilerini çeker ve GÜNLÜK ARŞİV
+Excel dosyası üretir:  Archive/Hisse_Verileri_YYYYMMDD.xlsx
+(Aynı gün tekrar çalıştırılırsa yeni dosya oluşturulmaz, üzerine yazılır.)
 Puanlama/skorlama YOKTUR; yalnızca ham + normalize edilmiş veri listelenir.
 
 Kullanım:
-    python hisse_veri_cek.py
-    python hisse_veri_cek.py --hisse THYAO
-    python hisse_veri_cek.py --sektor Banka
-    python hisse_veri_cek.py --top 100
-    python hisse_veri_cek.py --offline
-    python hisse_veri_cek.py --cikti C:\\Raporlar
+    python vericekme.py
+    python vericekme.py --hisse THYAO
+    python vericekme.py --sektor Banka
+    python vericekme.py --top 100
+    python vericekme.py --offline
+    python vericekme.py --cikti C:\\Raporlar
+
+Çıktı varsayılan olarak bu script'in yanındaki "Archive" klasörüne yazılır.
 
 Gereksinim: Python 3.9+, openpyxl, pandas
 """
@@ -51,6 +54,12 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # Sabitler
 # ---------------------------------------------------------------------------
+
+# Proje kökü ve günlük arşiv klasörü (script'in bulunduğu dizin esas alınır,
+# böylece proje nereden çalıştırılırsa çalıştırılsın doğru yere yazar).
+BASE_DIR = Path(__file__).resolve().parent
+ARCHIVE_DIR = BASE_DIR / "Archive"
+DEFAULT_OFFLINE = BASE_DIR / "Bist_Hisse_Tum_Veriler.xlsx"
 
 MARKET = "turkey"
 SCANNER_URL = "https://scanner.tradingview.com/{market}/scan"
@@ -687,10 +696,7 @@ def build_report(df: pd.DataFrame, args, source: str, out_dir: Path) -> Path:
     now = datetime.now()
     stamp = now.strftime("%Y%m%d")
     out_path = out_dir / f"Hisse_Verileri_{stamp}.xlsx"
-    counter = 2
-    while out_path.exists():
-        out_path = out_dir / f"Hisse_Verileri_{stamp}_{counter}.xlsx"
-        counter += 1
+    # Aynı gün tekrar çalıştırılırsa yeni dosya üretilmez; mevcut dosyanın üzerine yazılır.
 
     wb = openpyxl.Workbook()
 
@@ -880,7 +886,8 @@ def parse_args(argv=None):
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--cikti", default=".", help="Çıktı klasörü (varsayılan: bu klasör)")
+    p.add_argument("--cikti", default=str(ARCHIVE_DIR),
+                   help="Çıktı klasörü (varsayılan: script yanındaki Archive)")
     p.add_argument("--top", type=int, default=None,
                    help="İlk N hisse (piyasa değeri azalan)")
     p.add_argument("--hisse", default=None,
@@ -895,7 +902,7 @@ def parse_args(argv=None):
     p.add_argument("--min-float", type=float, default=None)
     p.add_argument("--offline", action="store_true",
                    help="Canlı yerine yerel Bist_Hisse_Tum_Veriler.xlsx kullan")
-    p.add_argument("--offline-dosya", default="Bist_Hisse_Tum_Veriler.xlsx",
+    p.add_argument("--offline-dosya", default=str(DEFAULT_OFFLINE),
                    help="Çevrimdışı Excel yolu")
     return p.parse_args(argv)
 
@@ -954,10 +961,10 @@ def main(argv=None) -> int:
         else:
             print(f"\n  UYARI: {args.hisse} bulunamadı.")
 
-    # 4) Excel
+    # 4) Excel (günlük arşiv)
     out_dir = Path(args.cikti)
     out_dir.mkdir(parents=True, exist_ok=True)
-    log("Excel raporu yazılıyor...")
+    log(f"Excel raporu yazılıyor (arşiv: {out_dir})...")
     out_path = build_report(filtered if not filtered.empty else df, args, source, out_dir)
     size = out_path.stat().st_size / 1024
     log(f"Rapor hazır: {out_path.resolve()} ({size:.0f} KB)")

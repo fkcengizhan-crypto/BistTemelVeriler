@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Manuel çevrimdışı yedek dosyası (isteğe bağlı olarak takip edilebilir)
+Bist_Hisse_Tum_Veriler.xlsx
+
+# Üretilen rapor çıktıları (kaynak kod takip edilir, üretilen HTML edilmez)
+Temel_Analiz_*.html
+
+# İşletim sistemi / editör
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
